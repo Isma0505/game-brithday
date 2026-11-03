@@ -7,7 +7,7 @@
 
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 export interface GameCanvasFrame {
   ctx: CanvasRenderingContext2D;
@@ -114,28 +114,28 @@ export interface KeysState {
   consumePressed: (key: string) => boolean;
 }
 
+/** Lazily-built keyboard state (created via useRef factory, never in render). */
+function createKeysState(): KeysState {
+  const state: KeysState = {
+    down: new Set<string>(),
+    pressed: new Set<string>(),
+    consumePressed(key) {
+      if (state.pressed.has(key)) {
+        state.pressed.delete(key);
+        return true;
+      }
+      return false;
+    },
+  };
+  return state;
+}
+
 /** Tracks held keys; also buffers single presses (jump etc). */
 export function useKeys(): React.RefObject<KeysState> {
-  const ref = useRef<KeysState | null>(null);
-  if (ref.current == null) {
-    ref.current = {
-      down: new Set<string>(),
-      pressed: new Set<string>(),
-      consumePressed: (key: string) => {
-        const state = ref.current;
-        if (!state) return false;
-        if (state.pressed.has(key)) {
-          state.pressed.delete(key);
-          return true;
-        }
-        return false;
-      },
-    };
-  }
+  const state = useMemo(() => createKeysState(), []);
+  const ref = useRef<KeysState>(state);
 
   useEffect(() => {
-    const state = ref.current;
-    if (!state) return;
     const onDown = (e: KeyboardEvent) => {
       const k = e.key.toLowerCase();
       if (GAME_KEYS.has(k)) e.preventDefault();
@@ -159,7 +159,7 @@ export function useKeys(): React.RefObject<KeysState> {
     };
   }, []);
 
-  return ref as React.RefObject<KeysState>;
+  return ref;
 }
 
 /* ------------------------------------------------------------ touch mode */

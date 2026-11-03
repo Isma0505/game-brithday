@@ -31,8 +31,15 @@ export function FinaleCinematic({ onPlayAgain, onBackRoom, onSeen }: FinaleCinem
   const particlesRef = useRef<ParticleSystem | null>(null);
   if (particlesRef.current == null) particlesRef.current = new ParticleSystem();
 
+  const seenRef = useRef(false);
+
   useEffect(() => {
-    onSeen();
+    /* guard: mark the finale as seen exactly once, even if the effect
+       re-runs due to a prop identity change */
+    if (!seenRef.current) {
+      seenRef.current = true;
+      onSeen();
+    }
     const t1 = setTimeout(() => audio.sfx('portal'), 600);
     const t2 = setTimeout(() => {
       audio.sfx('fanfare');

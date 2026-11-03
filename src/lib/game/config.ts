@@ -15,7 +15,7 @@ export const BIRTHDAY_MESSAGE = {
 
   /* Kalimat besar di layar pembuka (muncul perlahan, huruf demi huruf). */
   introGreetingLine1: 'SELAMAT ULANG TAHUN',
-  introGreetingLine2: 'KAKAKKU SAYANG',
+  introGreetingLine2: 'KAKAKU SAYANG',
 
   /* Subjudul layar pembuka. */
   introSubtitle1: 'An Adventure Made Just for You',

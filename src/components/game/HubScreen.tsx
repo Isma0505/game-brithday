@@ -6,7 +6,7 @@
  *  Progress decorates the final room, so every game matters.
  * ========================================================================= */
 
-import { Check, Lock, RotateCcw, Star, SwapHoriz } from 'lucide-react';
+import { ArrowRightLeft, Check, Lock, RotateCcw, Star } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { audio } from '@/lib/game/audio';
 import { GOALS } from '@/lib/game/config';
@@ -260,7 +260,7 @@ export function HubScreen({ progress, onPlay, onRoom, onChangeCharacter, onReset
                 onClick={() => { audio.sfx('click'); onChangeCharacter(); }}
                 className="mt-1 flex items-center gap-1.5 font-retro text-sm text-[#ffd97a]/80 transition-colors hover:text-[#ffd97a]"
               >
-                <SwapHoriz className="h-3.5 w-3.5" /> Change hero
+                <ArrowRightLeft className="h-3.5 w-3.5" /> Change hero
               </button>
             </div>
           </div>

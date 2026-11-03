@@ -21,11 +21,11 @@ import {
   saveProgress,
   type GameProgress,
 } from '@/lib/game/storage';
-import { BalloonPopGame } from './BalloonPopGame';
+import BalloonPopGame from './BalloonPopGame';
 import { BirthdayRoom } from './BirthdayRoom';
 import { CharacterSelect } from './CharacterSelect';
 import { FinaleCinematic } from './FinaleCinematic';
-import { GiftCatchGame } from './GiftCatchGame';
+import GiftCatchGame from './GiftCatchGame';
 import { HubScreen } from './HubScreen';
 import { IntroScreen } from './IntroScreen';
 import { LoadingScreen } from './LoadingScreen';
@@ -60,9 +60,8 @@ export default function BirthdayQuest() {
 
   /* hydrate the save file once on mount (client-only external store) */
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage hydration must happen after mount
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage must hydrate after mount to avoid SSR mismatch
     setProgress(loadProgress());
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setHydrated(true);
   }, []);
 
@@ -161,6 +160,36 @@ export default function BirthdayQuest() {
     });
   }, []);
 
+  /* ---- stable callbacks passed to children ------------------------------
+   * Every child receives memoized handlers: components like
+   * FinaleCinematic/LoadingScreen run effects that depend on these props,
+   * so a fresh inline identity each render would cause update loops. */
+  const goIntro = useCallback(() => setPhase('intro'), []);
+  const goCharacter = useCallback(() => setPhase('character'), []);
+  const goHub = useCallback(() => setPhase('hub'), []);
+  const goRoom = useCallback(() => setPhase('room'), []);
+  const goFinale = useCallback(() => setPhase('finale'), []);
+  const playGame = useCallback((_game: 'trail' | 'balloon' | 'gift') => {
+    setPhase(_game);
+  }, []);
+  const continueGame = useCallback(() => {
+    setPhase(progress.character ? 'hub' : 'character');
+    /* dep on the primitive progress.character — identity changes only when the hero changes */
+  }, [progress.character]);
+  const confirmCharacter = useCallback(
+    (id: string) => {
+      update({ character: id });
+      setPhase('hub');
+    },
+    [update],
+  );
+  const enterPortal = useCallback(() => {
+    update({ trailDone: true });
+    setPhase('room');
+  }, [update]);
+  const makeWish = useCallback(() => update({ wished: true }), [update]);
+  const markFinaleSeen = useCallback(() => update({ finaleSeen: true }), [update]);
+
   /* --------------------------------- render ---------------------------- */
 
   const characterId = progress.character ?? 'astra';
@@ -172,13 +201,13 @@ export default function BirthdayQuest() {
       role="application"
       aria-label="Birthday Quest — The Secret Gift"
     >
-      {phase === 'loading' && <LoadingScreen onDone={() => setPhase('intro')} />}
+      {phase === 'loading' && <LoadingScreen onDone={goIntro} />}
 
       {phase === 'intro' && hydrated && (
         <IntroScreen
           progress={progress}
-          onStart={() => setPhase('character')}
-          onContinue={() => setPhase(progress.character ? 'hub' : 'character')}
+          onStart={goCharacter}
+          onContinue={continueGame}
           onNewGame={startNewGame}
         />
       )}
@@ -186,20 +215,17 @@ export default function BirthdayQuest() {
       {phase === 'character' && (
         <CharacterSelect
           initialCharacter={progress.character}
-          onConfirm={(id) => {
-            update({ character: id });
-            setPhase('hub');
-          }}
-          onBack={() => setPhase('intro')}
+          onConfirm={confirmCharacter}
+          onBack={goIntro}
         />
       )}
 
       {phase === 'hub' && (
         <HubScreen
           progress={progress}
-          onPlay={(game) => setPhase(game)}
-          onRoom={() => setPhase('room')}
-          onChangeCharacter={() => setPhase('character')}
+          onPlay={playGame}
+          onRoom={goRoom}
+          onChangeCharacter={goCharacter}
           onReset={resetGame}
         />
       )}
@@ -209,20 +235,17 @@ export default function BirthdayQuest() {
           characterId={characterId}
           collectedIds={progress.trailStars.slice()}
           onStarCollect={handleStarCollect}
-          onEnterPortal={() => {
-            update({ trailDone: true });
-            setPhase('room');
-          }}
-          onBack={() => setPhase('hub')}
+          onEnterPortal={enterPortal}
+          onBack={goHub}
         />
       )}
 
       {phase === 'balloon' && (
-        <BalloonPopGame onBack={() => setPhase('hub')} onComplete={handleBalloonComplete} />
+        <BalloonPopGame onBack={goHub} onComplete={handleBalloonComplete} />
       )}
 
       {phase === 'gift' && (
-        <GiftCatchGame onBack={() => setPhase('hub')} onComplete={handleGiftComplete} />
+        <GiftCatchGame onBack={goHub} onComplete={handleGiftComplete} />
       )}
 
       {phase === 'room' && (
@@ -231,17 +254,17 @@ export default function BirthdayQuest() {
           wished={progress.wished}
           balloonPops={progress.balloonPops}
           giftsCaught={progress.giftsCaught}
-          onWish={() => update({ wished: true })}
-          onOpenGift={() => setPhase('finale')}
-          onBack={() => setPhase('hub')}
+          onWish={makeWish}
+          onOpenGift={goFinale}
+          onBack={goHub}
         />
       )}
 
       {phase === 'finale' && (
         <FinaleCinematic
-          onPlayAgain={() => setPhase('hub')}
-          onBackRoom={() => setPhase('room')}
-          onSeen={() => update({ finaleSeen: true })}
+          onPlayAgain={goHub}
+          onBackRoom={goRoom}
+          onSeen={markFinaleSeen}
         />
       )}
 

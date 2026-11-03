@@ -205,6 +205,11 @@ body {
   }
 }
 
+/* plain-CSS animation utility — cubic-bezier commas break Tailwind arbitrary values */
+.animate-letter-in {
+  animation: letterIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 /* golden breathing glow — works on buttons, icons and text (drop-shadow) */
 @keyframes glowPulse {
   0%,

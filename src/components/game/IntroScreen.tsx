@@ -27,7 +27,10 @@ function GreetingLine({ text, delayBase, className }: { text: string; delayBase:
         <span
           key={i}
           aria-hidden="true"
-          className="inline-block animate-[letterIn_0.6s_cubic-bezier(0.22,1,0.36,1)_both] whitespace-pre"
+          /* gradient lives on each letter: a transformed child breaks
+             background-clip:text on the parent, so the line-level clip
+             would render the whole greeting invisible */
+          className="animate-letter-in inline-block whitespace-pre bg-gradient-to-b from-[#fff6d8] via-[#ffd97a] to-[#d99a1e] bg-clip-text text-transparent"
           style={{ animationDelay: `${delayBase + i * 45}ms` }}
         >
           {ch}
@@ -78,13 +81,13 @@ export function IntroScreen({ progress, onStart, onContinue, onNewGame }: IntroS
         </div>
 
         {/* GRAND GREETING */}
-        <h1 className="font-elegant font-black leading-tight tracking-wide">
-          <span className="block bg-gradient-to-b from-[#fff6d8] via-[#ffd97a] to-[#d99a1e] bg-clip-text text-[clamp(1.15rem,4.2vw,2.4rem)] text-transparent drop-shadow-[0_2px_18px_rgba(247,201,72,0.35)]">
-            <GreetingLine text={BIRTHDAY_MESSAGE.introGreetingLine1} delayBase={200} />
-          </span>
-          <span className="mt-1 block bg-gradient-to-b from-[#fff6d8] via-[#ffd97a] to-[#d99a1e] bg-clip-text text-[clamp(1.5rem,6vw,3.4rem)] text-transparent drop-shadow-[0_4px_24px_rgba(247,201,72,0.45)]">
-            <GreetingLine text={BIRTHDAY_MESSAGE.introGreetingLine2} delayBase={1100} />
-          </span>
+        <h1 className="font-elegant font-black leading-tight tracking-wide drop-shadow-[0_2px_18px_rgba(247,201,72,0.4)]">
+          <GreetingLine text={BIRTHDAY_MESSAGE.introGreetingLine1} delayBase={200} className="text-[clamp(1.15rem,4.2vw,2.4rem)]" />
+          <GreetingLine
+            text={BIRTHDAY_MESSAGE.introGreetingLine2}
+            delayBase={1100}
+            className="mt-1 text-[clamp(1.5rem,6vw,3.4rem)] drop-shadow-[0_4px_24px_rgba(247,201,72,0.5)]"
+          />
         </h1>
 
         {/* pixel divider */}
