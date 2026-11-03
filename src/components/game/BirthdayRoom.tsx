@@ -7,7 +7,7 @@
  *  at the cake. Then... "Open Your Gift".
  * ========================================================================= */
 
-import { Gift, MoonStar } from 'lucide-react';
+import { Cake, Gift, Mail, MoonStar } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { audio } from '@/lib/game/audio';
 import { canvasPoint, useGameCanvas, useIsTouch, useKeys } from '@/lib/game/canvas';
@@ -27,13 +27,15 @@ export interface BirthdayRoomProps {
   giftsCaught: number;
   onWish: () => void;
   onOpenGift: () => void;
+  onCake: () => void;
+  onCard: () => void;
   onBack: () => void;
 }
 
 type WishPhase = 'idle' | 'blowing' | 'dark' | 'relight';
 
 export function BirthdayRoom({
-  characterId, wished: initialWished, balloonPops, giftsCaught, onWish, onOpenGift, onBack,
+  characterId, wished: initialWished, balloonPops, giftsCaught, onWish, onOpenGift, onCake, onCard, onBack,
 }: BirthdayRoomProps) {
   const isTouch = useIsTouch();
   const keys = useKeys();
@@ -246,16 +248,18 @@ export function BirthdayRoom({
     drawGarland(ctx, 0, 20 * unit, w * 0.45, 30 * unit, t);
     drawGarland(ctx, w * 0.55, 30 * unit, w, 20 * unit, t);
 
-    /* HAPPY BIRTHDAY banner */
+    /* HAPPY BIRTHDAY banner — text unit is clamped so the banner always
+       fits narrow portrait screens (mobile) instead of spilling off-edge */
     {
+      const bUnit = Math.min(unit, w / 132);
       const bY = 40 * unit;
+      const bW = (14 * 4 + 2) * 2.1 * bUnit;
       ctx.fillStyle = 'rgba(20,14,40,0.72)';
-      const bW = (14 * 4 + 2) * 2.1 * unit;
-      ctx.fillRect(w / 2 - bW / 2, bY - 3 * unit, bW, 13 * unit);
+      ctx.fillRect(w / 2 - bW / 2, bY - 3 * bUnit, bW, 13 * bUnit);
       ctx.fillStyle = '#e05252';
-      ctx.fillRect(w / 2 - bW / 2, bY - 3 * unit, bW, 1.4 * unit);
-      ctx.fillRect(w / 2 - bW / 2, bY + 8.6 * unit, bW, 1.4 * unit);
-      drawPixelTextCentered(ctx, 'HAPPY BIRTHDAY', w / 2, bY, 2.1 * unit, '#ffd97a');
+      ctx.fillRect(w / 2 - bW / 2, bY - 3 * bUnit, bW, 1.4 * bUnit);
+      ctx.fillRect(w / 2 - bW / 2, bY + 8.6 * bUnit, bW, 1.4 * bUnit);
+      drawPixelTextCentered(ctx, 'HAPPY BIRTHDAY', w / 2, bY, 2.1 * bUnit, '#ffd97a');
     }
 
     /* balloons at ceiling */
@@ -311,17 +315,22 @@ export function BirthdayRoom({
       }
     }
 
-    /* interact prompt */
+    /* interact prompt — clamped so it never overflows small screens;
+       labels only use glyphs that exist in the pixel font (A-Z, space) */
     if (nearCake && wish.phase === 'idle' && wishOverlay === 'none') {
       const pY = floorY - 108 * unit + Math.sin(t * 3) * 2 * unit;
-      const label = wished ? 'PRESS E — CELEBRATE!' : isTouch ? 'TAP A — MAKE A WISH' : 'PRESS E — MAKE A WISH';
-      const lw = (label.length * 4 + 2) * 1.7 * unit;
+      const label = wished ? 'PRESS E TO CELEBRATE' : isTouch ? 'TAP A TO WISH' : 'PRESS E TO WISH';
+      /* the label centers on the cake, so it must fit between the cake
+         and the nearest screen edge — not just within the screen width */
+      const maxLabelW = 2 * Math.min(cakeX, w - cakeX) - 14;
+      const tUnit = Math.max(1.2, Math.min(unit, maxLabelW / ((label.length * 4 + 2) * 1.7)));
+      const lw = (label.length * 4 + 2) * 1.7 * tUnit;
       ctx.fillStyle = 'rgba(10, 8, 24, 0.85)';
-      ctx.fillRect(cakeX - lw / 2, pY - 6 * unit, lw, 11 * unit);
+      ctx.fillRect(cakeX - lw / 2, pY - 6 * tUnit, lw, 11 * tUnit);
       ctx.fillStyle = '#ffd97a';
-      ctx.fillRect(cakeX - lw / 2, pY - 6 * unit, lw, 1.2 * unit);
-      ctx.fillRect(cakeX - lw / 2, pY + 4 * unit, lw, 1.2 * unit);
-      drawPixelTextCentered(ctx, label, cakeX, pY - 2.4 * unit, 1.7 * unit, '#ffe9a8');
+      ctx.fillRect(cakeX - lw / 2, pY - 6 * tUnit, lw, 1.2 * tUnit);
+      ctx.fillRect(cakeX - lw / 2, pY + 4 * tUnit, lw, 1.2 * tUnit);
+      drawPixelTextCentered(ctx, label, cakeX, pY - 2.4 * tUnit, 1.7 * tUnit, '#ffe9a8');
     }
 
     /* ------------------------------------------------------------ player */
@@ -402,8 +411,27 @@ export function BirthdayRoom({
           </div>
         )}
 
-        {/* open gift button */}
-        <div className="absolute inset-x-0 bottom-6 z-40 flex justify-center px-4 pb-[env(safe-area-inset-bottom)]">
+        {/* side attractions + open gift button — lifted above the virtual
+            joystick area on touch devices so nothing blocks the controls */}
+        <div
+          className={`absolute inset-x-0 z-40 flex flex-col items-center gap-2.5 px-4 pb-[env(safe-area-inset-bottom)] ${
+            isTouch ? 'bottom-44' : 'bottom-6'
+          }`}
+        >
+          <div className="flex items-center gap-2.5">
+            <button
+              onClick={() => { audio.sfx('click'); onCake(); }}
+              className="flex items-center gap-2 rounded-xl border border-[#ffb066]/50 bg-[#14102b]/85 px-4 py-2.5 font-pixel text-[7px] text-[#ffb066] backdrop-blur-sm transition-all hover:border-[#ffb066] hover:bg-[#241a0e]/90 active:scale-95 sm:text-[8px]"
+            >
+              <Cake className="h-4 w-4" /> GRAND CAKE
+            </button>
+            <button
+              onClick={() => { audio.sfx('click'); onCard(); }}
+              className="flex items-center gap-2 rounded-xl border border-[#fdf6e8]/45 bg-[#14102b]/85 px-4 py-2.5 font-pixel text-[7px] text-[#fdf6e8] backdrop-blur-sm transition-all hover:border-[#fdf6e8] hover:bg-[#26203a]/90 active:scale-95 sm:text-[8px]"
+            >
+              <Mail className="h-4 w-4" /> READ THE LETTER
+            </button>
+          </div>
           <button
             onClick={() => { audio.sfx('fanfare'); onOpenGift(); }}
             onMouseEnter={() => audio.sfx('hover')}

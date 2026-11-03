@@ -13,6 +13,10 @@ export interface GameProgress {
   /** Best gift cascade results. */
   giftsCaught: number;
   giftsDone: boolean;
+  /** Grand cake ceremony — all candles blown out at least once. */
+  cakeDone: boolean;
+  /** 3D greeting card has been opened. */
+  cardOpened: boolean;
   wished: boolean;
   finaleSeen: boolean;
 }
@@ -27,6 +31,8 @@ export const DEFAULT_PROGRESS: GameProgress = {
   balloonTimeSec: null,
   giftsCaught: 0,
   giftsDone: false,
+  cakeDone: false,
+  cardOpened: false,
   wished: false,
   finaleSeen: false,
 };

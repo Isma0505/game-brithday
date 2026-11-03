@@ -7,7 +7,7 @@
  * ========================================================================= */
 
 import { useEffect, useRef, useState } from 'react';
-import { Heart, RotateCcw, Sparkles } from 'lucide-react';
+import { Heart, Mail, RotateCcw, Sparkles } from 'lucide-react';
 import { audio } from '@/lib/game/audio';
 import { useGameCanvas } from '@/lib/game/canvas';
 import { BIRTHDAY_MESSAGE } from '@/lib/game/config';
@@ -18,12 +18,13 @@ import { SkyCanvas } from './SkyCanvas';
 export interface FinaleCinematicProps {
   onPlayAgain: () => void;
   onBackRoom: () => void;
+  onReadCard: () => void;
   onSeen: () => void;
 }
 
 const BURST_AT = 3.4; /* seconds */
 
-export function FinaleCinematic({ onPlayAgain, onBackRoom, onSeen }: FinaleCinematicProps) {
+export function FinaleCinematic({ onPlayAgain, onBackRoom, onReadCard, onSeen }: FinaleCinematicProps) {
   const [burst, setBurst] = useState(false);
   const burstRef = useRef(false);
   /* canvas-elapsed time at the burst moment; -1 = not yet happened */
@@ -208,6 +209,12 @@ export function FinaleCinematic({ onPlayAgain, onBackRoom, onSeen }: FinaleCinem
                 className="rounded-xl border border-white/25 bg-white/5 px-8 py-3.5 font-pixel text-[9px] text-white/85 backdrop-blur-sm transition-all hover:border-[#ffd97a]/60 hover:text-[#ffd97a] active:scale-95 sm:text-[10px]"
               >
                 BACK TO THE ROOM
+              </button>
+              <button
+                onClick={() => { audio.sfx('click'); onReadCard(); }}
+                className="flex items-center justify-center gap-2 rounded-xl border border-[#fdf6e8]/40 bg-[#26203a]/70 px-8 py-3.5 font-pixel text-[9px] text-[#fdf6e8] backdrop-blur-sm transition-all hover:border-[#fdf6e8]/80 hover:text-white active:scale-95 sm:text-[10px]"
+              >
+                <Mail className="h-4 w-4" /> READ THE LETTER
               </button>
             </div>
           </>

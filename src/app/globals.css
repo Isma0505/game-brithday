@@ -236,3 +236,100 @@ body {
     transform: rotate(360deg);
   }
 }
+
+/* -------------------------------------------- grand cake ceremony ------ */
+
+/* candle flame flicker (transform-origin bottom center) */
+@keyframes flameFlicker {
+  0% {
+    transform: translateX(-50%) scale(1, 1) rotate(-2deg);
+  }
+  50% {
+    transform: translateX(-50%) scale(0.92, 1.08) rotate(2.5deg);
+  }
+  100% {
+    transform: translateX(-50%) scale(1.05, 0.94) rotate(-1.5deg);
+  }
+}
+
+/* flame extinguish puff-out */
+@keyframes flameOut {
+  0% {
+    transform: translateX(-50%) scale(1.15, 1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-50%) scale(0.1, 1.7);
+    opacity: 0;
+  }
+}
+
+/* smoke rings rising from a blown-out wick */
+@keyframes smokeUp {
+  0% {
+    transform: translate(-50%, 0) scale(0.5);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.65;
+  }
+  100% {
+    transform: translate(-50%, -46px) scale(1.7);
+    opacity: 0;
+  }
+}
+
+/* wind streaks while the BLOW button is held */
+@keyframes windStreak {
+  0% {
+    transform: translateX(70px) scaleX(0.4);
+    opacity: 0;
+  }
+  30% {
+    opacity: 0.7;
+  }
+  100% {
+    transform: translateX(-90px) scaleX(1);
+    opacity: 0;
+  }
+}
+
+/* confetti pieces falling across the screen */
+@keyframes confettiDrop {
+  0% {
+    transform: translateY(-6vh) rotate(0deg);
+    opacity: 0;
+  }
+  6% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(104vh) rotate(720deg);
+    opacity: 0.9;
+  }
+}
+
+/* soft golden specks drifting up (card / cake ambience) */
+@keyframes goldDrift {
+  0% {
+    transform: translateY(0) translateX(0) scale(1);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: translateY(-38vh) translateX(14px) scale(0.4);
+    opacity: 0;
+  }
+}
+
+/* the wish-darkness veil */
+@keyframes veilIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

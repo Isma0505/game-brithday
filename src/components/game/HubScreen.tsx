@@ -10,19 +10,21 @@ import { ArrowRightLeft, Check, Lock, RotateCcw, Star } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { audio } from '@/lib/game/audio';
 import { GOALS } from '@/lib/game/config';
-import { drawBalloon, drawGiftBox, drawMagicStar, drawPortal, getCharacter, drawSprite, drawTree } from '@/lib/game/sprites';
+import { drawBalloon, drawCake, drawGiftBox, drawMagicStar, drawPortal, getCharacter, drawSprite, drawTree } from '@/lib/game/sprites';
 import type { GameProgress } from '@/lib/game/storage';
 import { SkyCanvas } from './SkyCanvas';
 
+export type PlayableId = 'trail' | 'balloon' | 'gift' | 'cake' | 'card';
+
 interface HubScreenProps {
   progress: GameProgress;
-  onPlay: (game: 'trail' | 'balloon' | 'gift') => void;
+  onPlay: (game: PlayableId) => void;
   onRoom: () => void;
   onChangeCharacter: () => void;
   onReset: () => void;
 }
 
-type CardId = 'trail' | 'balloon' | 'gift' | 'room';
+type CardId = 'trail' | 'balloon' | 'gift' | 'cake' | 'card' | 'room';
 
 /* Animated preview canvas per card. */
 function PortalPreview({ id }: { id: CardId }) {
@@ -103,6 +105,54 @@ function PortalPreview({ id }: { id: CardId }) {
             ctx.fillRect(px, py, 2, 2);
           }
           break;
+        case 'cake': {
+          /* a tiny cake with three burning candles */
+          ctx.fillStyle = 'rgba(255,196,110,0.14)';
+          const halo = ctx.createRadialGradient(cx, groundY - 26, 0, cx, groundY - 26, 40);
+          halo.addColorStop(0, 'rgba(255,196,110,0.4)');
+          halo.addColorStop(1, 'rgba(255,196,110,0)');
+          ctx.fillStyle = halo;
+          ctx.fillRect(0, 0, W, H);
+          drawCake(ctx, cx, groundY + 1, 0.62, time, [true, true, true]);
+          break;
+        }
+        case 'card': {
+          /* a floating sealed letter */
+          const ly = groundY - 24 + Math.sin(time * 1.6) * 3;
+          ctx.save();
+          ctx.translate(cx, ly);
+          ctx.rotate(Math.sin(time * 1.1) * 0.06);
+          ctx.fillStyle = '#fdf6e8';
+          ctx.strokeStyle = '#c9a24a';
+          ctx.lineWidth = 1.4;
+          ctx.beginPath();
+          ctx.rect(-20, -13, 40, 26);
+          ctx.fill();
+          ctx.stroke();
+          /* flap */
+          ctx.beginPath();
+          ctx.moveTo(-20, -13);
+          ctx.lineTo(0, 4);
+          ctx.lineTo(20, -13);
+          ctx.stroke();
+          /* seal */
+          ctx.fillStyle = '#e8a528';
+          ctx.beginPath();
+          ctx.arc(0, 2, 4.4, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#7a4a10';
+          ctx.fillRect(-1.6, -0.4, 3.2, 3);
+          ctx.fillRect(-3, -1.4, 2, 2);
+          ctx.fillRect(1, -1.4, 2, 2);
+          ctx.restore();
+          /* sparkles around */
+          for (let i = 0; i < 4; i++) {
+            const a = time * 2 + i * 1.6;
+            ctx.fillStyle = `rgba(255,222,140,${0.35 + 0.45 * Math.abs(Math.sin(time * 3 + i * 2))})`;
+            ctx.fillRect(cx + Math.cos(a) * 26, ly + Math.sin(a * 1.3) * 16, 1.6, 1.6);
+          }
+          break;
+        }
       }
       raf = requestAnimationFrame(loop);
     };
@@ -215,15 +265,37 @@ export function HubScreen({ progress, onPlay, onRoom, onChangeCharacter, onReset
       accent: '#5eead4',
     },
     {
+      id: 'cake',
+      name: 'THE WISHING CAKE',
+      desc: `A grand birthday cake with ${GOALS.CAKE_CANDLES} candles — one for every star. Blow them all out and make your wish.`,
+      status: progress.cakeDone ? 'Wish granted!' : `Blow out ${GOALS.CAKE_CANDLES} candles`,
+      done: progress.cakeDone,
+      locked: false,
+      onClick: () => onPlay('cake'),
+      accent: '#ffb066',
+    },
+    {
+      id: 'card',
+      name: 'A LETTER FOR YOU',
+      desc: 'A sealed letter glows with your name on it. Break the wax seal and read what is written inside.',
+      status: progress.cardOpened ? 'Read it again anytime' : 'Sealed with love',
+      done: progress.cardOpened,
+      locked: false,
+      onClick: () => onPlay('card'),
+      accent: '#fdf6e8',
+    },
+    {
       id: 'room',
       name: 'THE GOLDEN PORTAL',
       desc: roomOpen
         ? 'The way is open. Your surprise awaits inside...'
-        : 'A sealed gate of golden light. The 5 stars will awaken it.',
-      status: roomOpen ? 'ENTER THE BIRTHDAY ROOM' : 'LOCKED',
+        : `Sealed by starlight. Gather the ${GOALS.STARS} magical stars in Starlight Trail to awaken it.`,
+      status: roomOpen ? 'ENTER THE BIRTHDAY ROOM' : `STARS ${progress.trailStars.length}/${GOALS.STARS} — TAP TO QUEST`,
       done: roomOpen,
       locked: !roomOpen,
-      onClick: () => { if (roomOpen) onRoom(); },
+      /* FIX: tapping the sealed portal now jumps straight into the quest
+         that unlocks it, instead of silently doing nothing. */
+      onClick: () => { if (roomOpen) onRoom(); else onPlay('trail'); },
       accent: '#ffd97a',
     },
   ];
@@ -240,7 +312,7 @@ export function HubScreen({ progress, onPlay, onRoom, onChangeCharacter, onReset
             THE ASTRAL FAIR
           </h1>
           <p className="mt-2 font-elegant text-sm italic text-white/70 sm:text-base">
-            Three wonders await — and one secret hides behind golden light.
+            Five wonders await — and one secret hides behind golden light.
           </p>
         </header>
 
@@ -288,14 +360,14 @@ export function HubScreen({ progress, onPlay, onRoom, onChangeCharacter, onReset
             <button
               key={card.id}
               onClick={() => {
-                if (card.locked) { audio.sfx('miss'); return; }
+                if (card.locked) { audio.sfx('click'); card.onClick(); return; }
                 audio.sfx('click');
                 card.onClick();
               }}
-              onMouseEnter={() => { if (!card.locked) audio.sfx('hover'); }}
+              onMouseEnter={() => { audio.sfx('hover'); }}
               className={`group relative overflow-hidden rounded-2xl border text-left transition-all duration-300 active:scale-[0.98] ${
                 card.locked
-                  ? 'cursor-not-allowed border-white/10 bg-[#0d0a1e]/80 opacity-70'
+                  ? 'border-[#ffd97a]/25 bg-[#0d0a1e]/85 hover:border-[#ffd97a]/50 hover:shadow-[0_8px_30px_rgba(247,201,72,0.25)]'
                   : card.done && card.id === 'room'
                     ? 'animate-[glowPulse_2.4s_ease-in-out_infinite] border-[#ffd97a]/70 bg-[#1c1440]/85 hover:-translate-y-1 hover:shadow-[0_10px_40px_rgba(247,201,72,0.35)]'
                     : 'border-white/12 bg-[#14102b]/75 hover:-translate-y-1 hover:border-white/30 hover:shadow-[0_10px_36px_rgba(120,90,220,0.3)]'
@@ -307,7 +379,10 @@ export function HubScreen({ progress, onPlay, onRoom, onChangeCharacter, onReset
                   <div className="absolute inset-0 flex items-center justify-center bg-[#070514]/78 backdrop-blur-[1.5px]">
                     <div className="flex flex-col items-center gap-1.5">
                       <Lock className="h-6 w-6 text-white/70" />
-                      <span className="font-pixel text-[7px] tracking-widest text-white/60">SEALED</span>
+                      <span className="font-pixel text-[7px] tracking-widest text-white/60">STARS {progress.trailStars.length}/{GOALS.STARS}</span>
+                      <span className="flex items-center gap-1 font-pixel text-[6px] tracking-widest text-[#ffd97a]/90">
+                        <Star className="h-2.5 w-2.5" /> COMPLETE THE TRAIL
+                      </span>
                     </div>
                   </div>
                 )}

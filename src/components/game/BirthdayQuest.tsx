@@ -14,6 +14,7 @@
 import { Volume2, VolumeX } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { audio, type TrackName } from '@/lib/game/audio';
+import { GOALS } from '@/lib/game/config';
 import {
   clearProgress,
   DEFAULT_PROGRESS,
@@ -23,9 +24,11 @@ import {
 } from '@/lib/game/storage';
 import BalloonPopGame from './BalloonPopGame';
 import { BirthdayRoom } from './BirthdayRoom';
+import { CakeCeremony } from './CakeCeremony';
 import { CharacterSelect } from './CharacterSelect';
 import { FinaleCinematic } from './FinaleCinematic';
 import GiftCatchGame from './GiftCatchGame';
+import { GreetingCard3D } from './GreetingCard3D';
 import { HubScreen } from './HubScreen';
 import { IntroScreen } from './IntroScreen';
 import { LoadingScreen } from './LoadingScreen';
@@ -39,6 +42,8 @@ type Phase =
   | 'trail'
   | 'balloon'
   | 'gift'
+  | 'cake'
+  | 'card'
   | 'room'
   | 'finale';
 
@@ -49,9 +54,13 @@ const PHASE_MUSIC: Partial<Record<Phase, TrackName>> = {
   trail: 'quest',
   balloon: 'party',
   gift: 'party',
+  cake: 'room',
+  card: 'finale',
   room: 'room',
   finale: 'finale',
 };
+
+type PlayableId = 'trail' | 'balloon' | 'gift' | 'cake' | 'card';
 
 export default function BirthdayQuest() {
   const [progress, setProgress] = useState<GameProgress>(DEFAULT_PROGRESS);
@@ -100,7 +109,13 @@ export default function BirthdayQuest() {
   const handleStarCollect = useCallback((id: string) => {
     setProgress((prev) => {
       if (prev.trailStars.includes(id)) return prev;
-      const next = { ...prev, trailStars: [...prev.trailStars, id] };
+      const trailStars = [...prev.trailStars, id];
+      /* FIX: the Golden Portal now awakens the moment the final star is
+         gathered — no longer requires physically walking into the portal.
+         This was why the 4th wonder stayed sealed for some players. */
+      const trailDone =
+        prev.trailDone || trailStars.length >= GOALS.STARS;
+      const next: GameProgress = { ...prev, trailStars, trailDone };
       saveProgress(next);
       return next;
     });
@@ -132,6 +147,24 @@ export default function BirthdayQuest() {
         giftsCaught: Math.max(prev.giftsCaught, result.caught),
         giftsDone: true,
       };
+      saveProgress(next);
+      return next;
+    });
+  }, []);
+
+  const markCakeDone = useCallback(() => {
+    setProgress((prev) => {
+      if (prev.cakeDone) return prev;
+      const next: GameProgress = { ...prev, cakeDone: true };
+      saveProgress(next);
+      return next;
+    });
+  }, []);
+
+  const markCardOpened = useCallback(() => {
+    setProgress((prev) => {
+      if (prev.cardOpened) return prev;
+      const next: GameProgress = { ...prev, cardOpened: true };
       saveProgress(next);
       return next;
     });
@@ -169,8 +202,8 @@ export default function BirthdayQuest() {
   const goHub = useCallback(() => setPhase('hub'), []);
   const goRoom = useCallback(() => setPhase('room'), []);
   const goFinale = useCallback(() => setPhase('finale'), []);
-  const playGame = useCallback((_game: 'trail' | 'balloon' | 'gift') => {
-    setPhase(_game);
+  const playGame = useCallback((game: PlayableId) => {
+    setPhase(game);
   }, []);
   const continueGame = useCallback(() => {
     setPhase(progress.character ? 'hub' : 'character');
@@ -189,6 +222,8 @@ export default function BirthdayQuest() {
   }, [update]);
   const makeWish = useCallback(() => update({ wished: true }), [update]);
   const markFinaleSeen = useCallback(() => update({ finaleSeen: true }), [update]);
+  const playCake = useCallback(() => setPhase('cake'), []);
+  const playCard = useCallback(() => setPhase('card'), []);
 
   /* --------------------------------- render ---------------------------- */
 
@@ -248,6 +283,19 @@ export default function BirthdayQuest() {
         <GiftCatchGame onBack={goHub} onComplete={handleGiftComplete} />
       )}
 
+      {phase === 'cake' && (
+        <CakeCeremony
+          onBack={goHub}
+          onDone={markCakeDone}
+          onRoom={goRoom}
+          roomOpen={progress.trailDone}
+        />
+      )}
+
+      {phase === 'card' && (
+        <GreetingCard3D onBack={goHub} onOpened={markCardOpened} />
+      )}
+
       {phase === 'room' && (
         <BirthdayRoom
           characterId={characterId}
@@ -256,6 +304,8 @@ export default function BirthdayQuest() {
           giftsCaught={progress.giftsCaught}
           onWish={makeWish}
           onOpenGift={goFinale}
+          onCake={playCake}
+          onCard={playCard}
           onBack={goHub}
         />
       )}
@@ -264,6 +314,7 @@ export default function BirthdayQuest() {
         <FinaleCinematic
           onPlayAgain={goHub}
           onBackRoom={goRoom}
+          onReadCard={playCard}
           onSeen={markFinaleSeen}
         />
       )}

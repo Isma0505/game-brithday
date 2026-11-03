@@ -35,6 +35,16 @@ export const BIRTHDAY_MESSAGE = {
   /* Pesan saat kamu melakukan "Make a Wish" di ruangan ulang tahun. */
   wishPrompt: 'Make a wish, brother...',
   wishDone: 'Your wish has been sealed with starlight.',
+
+  /* Halaman "The Grand Birthday Cake" — kue besar dengan lilin. */
+  cakeTitle: 'THE GRAND BIRTHDAY CAKE',
+  cakeHint: 'Tap the flames — or hold the BLOW button — to put them all out.',
+  cakeWishDone: 'Your wish has been sealed with candlelight.',
+
+  /* Halaman kartu ucapan 3D. */
+  cardTitle: 'A LETTER FOR YOU',
+  cardCoverText: 'FOR YOU',
+  cardGreeting: 'Dear',
 } as const;
 
 /* -------------------------------------------------------------------------
@@ -44,6 +54,7 @@ export const GOALS = {
   STARS: 5, // bintang ajaib yang harus dikumpulkan di Starlight Trail
   BALLOON_POPS: 25, // balon yang harus meletus di Balloon Fiesta
   GIFTS_CATCH: 15, // hadiah yang harus ditangkap di Gift Cascade
+  CAKE_CANDLES: 5, // lilin di kue ulang tahun besar (satu untuk setiap bintang!)
 } as const;
 
 export const GAME_TITLE = 'Birthday Quest';
