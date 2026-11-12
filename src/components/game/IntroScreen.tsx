@@ -12,6 +12,7 @@ import { audio } from '@/lib/game/audio';
 import { BIRTHDAY_MESSAGE, GAME_SUBTITLE, GAME_TITLE } from '@/lib/game/config';
 import { DEFAULT_PROGRESS, type GameProgress } from '@/lib/game/storage';
 import { SkyCanvas } from './SkyCanvas';
+import { useLanguage } from '@/lib/game/i18n';
 
 interface IntroScreenProps {
   progress: GameProgress;
@@ -41,9 +42,11 @@ function GreetingLine({ text, delayBase, className }: { text: string; delayBase:
 }
 
 export function IntroScreen({ progress, onStart, onContinue, onNewGame }: IntroScreenProps) {
+  const { language } = useLanguage();
   const cardRef = useRef<HTMLDivElement | null>(null);
   const [showMenu, setShowMenu] = useState(false);
   const hasSave = progress.character !== null && (progress.trailStars.length > 0 || progress.balloonDone || progress.giftsDone || progress.trailDone);
+  const fiveGamesDone = progress.trailDone && progress.balloonDone && progress.giftsDone && progress.lanternDone && progress.memoryDone;
 
   /* staggered reveal: greeting → title → menu */
   useEffect(() => {
@@ -82,9 +85,9 @@ export function IntroScreen({ progress, onStart, onContinue, onNewGame }: IntroS
 
         {/* GRAND GREETING */}
         <h1 className="font-elegant font-black leading-tight tracking-wide drop-shadow-[0_2px_18px_rgba(247,201,72,0.4)]">
-          <GreetingLine text={BIRTHDAY_MESSAGE.introGreetingLine1} delayBase={200} className="text-[clamp(1.15rem,4.2vw,2.4rem)]" />
+          <GreetingLine text={language === 'id' ? 'SELAMAT ULANG TAHUN' : BIRTHDAY_MESSAGE.introGreetingLine1} delayBase={200} className="text-[clamp(1.15rem,4.2vw,2.4rem)]" />
           <GreetingLine
-            text={BIRTHDAY_MESSAGE.introGreetingLine2}
+            text={language === 'id' ? 'KAKAKU SAYANG' : BIRTHDAY_MESSAGE.introGreetingLine2}
             delayBase={1100}
             className="mt-1 text-[clamp(1.5rem,6vw,3.4rem)] drop-shadow-[0_4px_24px_rgba(247,201,72,0.5)]"
           />
@@ -106,14 +109,28 @@ export function IntroScreen({ progress, onStart, onContinue, onNewGame }: IntroS
             {GAME_TITLE.toUpperCase()}
           </h2>
           <p className="mt-2 font-elegant text-sm italic tracking-[0.2em] text-[#cabdfd] sm:text-base">
-            — {GAME_SUBTITLE} —
+            — {language === 'id' ? 'HADIAH RAHASIA' : GAME_SUBTITLE} —
           </p>
         </div>
 
         {/* SUBTITLES */}
         <div className="mt-1 min-h-[3.4rem] opacity-0 animate-[fadeIn_1s_2.4s_both]">
-          <p className="font-elegant text-base text-white/90 sm:text-lg">{BIRTHDAY_MESSAGE.introSubtitle1}</p>
-          <p className="mt-1 font-retro text-lg text-[#9fe8d8] sm:text-xl">{BIRTHDAY_MESSAGE.introSubtitle2}</p>
+          <p className="font-elegant text-base text-white/90 sm:text-lg">{language === 'id' ? 'Petualangan khusus untukmu' : BIRTHDAY_MESSAGE.introSubtitle1}</p>
+          <p className="mt-1 font-retro text-lg text-[#9fe8d8] sm:text-xl">{language === 'id' ? 'Hari ini bukan hari biasa...' : BIRTHDAY_MESSAGE.introSubtitle2}</p>
+          {hasSave && !fiveGamesDone && (
+            <p className="mx-auto mt-3 max-w-sm font-retro text-base leading-tight text-[#ffd97a]">
+              {language === 'id'
+                ? 'Selesaikan 5 game dan lihatlah kejutan yang akan menanti!'
+                : 'Complete 5 games and discover the surprise waiting for you!'}
+            </p>
+          )}
+          {hasSave && fiveGamesDone && !progress.portalDone && (
+            <p className="mx-auto mt-3 max-w-sm font-retro text-base leading-tight text-[#ffd97a]">
+              {language === 'id'
+                ? 'Semua 5 game selesai! Portal emas sudah menunggumu.'
+                : 'All 5 games are complete! The Golden Portal is waiting.'}
+            </p>
+          )}
         </div>
 
         {/* MENU */}
@@ -124,14 +141,18 @@ export function IntroScreen({ progress, onStart, onContinue, onNewGame }: IntroS
                 onClick={() => { audio.sfx('click'); onContinue(); }}
                 className="group relative overflow-hidden rounded-xl bg-gradient-to-b from-[#ffd97a] to-[#e8a528] px-10 py-4 font-pixel text-[11px] text-[#2a1b04] shadow-[0_0_30px_rgba(247,201,72,0.45)] transition-all animate-[glowPulse_2.2s_ease-in-out_infinite] hover:brightness-110 active:scale-95 sm:text-xs"
               >
-                <span className="relative z-10">CONTINUE ADVENTURE</span>
+                <span className="relative z-10">
+                  {fiveGamesDone && !progress.portalDone
+                    ? (language === 'id' ? 'AYO MULAI' : "LET'S START")
+                    : (language === 'id' ? 'LANJUTKAN PETUALANGAN' : 'CONTINUE ADVENTURE')}
+                </span>
                 <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/40 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
               </button>
               <button
                 onClick={() => { audio.sfx('click'); onNewGame(); }}
                 className="font-pixel text-[8px] tracking-widest text-white/45 underline-offset-4 transition-colors hover:text-[#ffd97a] hover:underline sm:text-[9px]"
               >
-                START A NEW GAME
+                {language === 'id' ? 'MULAI PERMAINAN BARU' : 'START A NEW GAME'}
               </button>
             </>
           ) : (
@@ -139,7 +160,7 @@ export function IntroScreen({ progress, onStart, onContinue, onNewGame }: IntroS
               onClick={() => { audio.sfx('click'); onStart(); }}
               className="group relative overflow-hidden rounded-xl bg-gradient-to-b from-[#ffd97a] to-[#e8a528] px-10 py-4 font-pixel text-[11px] text-[#2a1b04] shadow-[0_0_30px_rgba(247,201,72,0.45)] transition-all animate-[glowPulse_2.2s_ease-in-out_infinite] hover:brightness-110 active:scale-95 sm:text-sm"
             >
-              <span className="relative z-10">START ADVENTURE</span>
+              <span className="relative z-10">{language === 'id' ? 'MULAI PETUALANGAN' : 'START ADVENTURE'}</span>
               <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/40 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
             </button>
           )}

@@ -10,6 +10,7 @@ import { useEffect, useRef, useState } from 'react';
 import { audio } from '@/lib/game/audio';
 import { CHARACTERS, drawSprite, getCharacter, type PixelCharacter } from '@/lib/game/sprites';
 import { SkyCanvas } from './SkyCanvas';
+import { useLanguage } from '@/lib/game/i18n';
 
 interface CharacterSelectProps {
   initialCharacter: string | null;
@@ -81,6 +82,7 @@ function CharacterPreview({ char, size = 3 }: { char: PixelCharacter; size?: num
 }
 
 export function CharacterSelect({ initialCharacter, onConfirm, onBack }: CharacterSelectProps) {
+  const { language } = useLanguage();
   const [selected, setSelected] = useState<string | null>(initialCharacter);
 
   const choose = (id: string) => {
@@ -97,21 +99,21 @@ export function CharacterSelect({ initialCharacter, onConfirm, onBack }: Charact
       <button
         onClick={() => { audio.sfx('click'); onBack(); }}
         className="group absolute left-4 top-4 z-20 flex items-center gap-2 rounded-lg border border-white/15 bg-[#14102b]/80 px-3 py-2 font-pixel text-[8px] text-white/80 backdrop-blur-sm transition-all hover:border-[#ffd97a]/50 hover:text-[#ffd97a] active:scale-95"
-        aria-label="Back"
+        aria-label={language === 'id' ? 'Kembali' : 'Back'}
       >
-        <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" /> BACK
+        <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" /> {language === 'id' ? 'KEMBALI' : 'BACK'}
       </button>
 
       <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 px-4 py-16 sm:gap-7">
         <header className="text-center">
           <h1 className="font-pixel text-sm text-[#ffd97a] drop-shadow-[0_0_12px_rgba(247,201,72,0.6)] sm:text-xl">
-            CHOOSE YOUR HERO
+            {language === 'id' ? 'PILIH PAHLAWANMU' : 'CHOOSE YOUR HERO'}
           </h1>
           <p className="mt-3 font-elegant text-base text-white/85 sm:text-lg">
-            Ready for your birthday adventure?
+            {language === 'id' ? 'Siap untuk petualangan ulang tahunmu?' : 'Ready for your birthday adventure?'}
           </p>
           <p className="font-retro text-lg text-white/50">
-            Pick a companion — each one is cheering for you.
+            {language === 'id' ? 'Pilih teman — mereka semua mendukungmu.' : 'Pick a companion — each one is cheering for you.'}
           </p>
         </header>
 
@@ -139,7 +141,7 @@ export function CharacterSelect({ initialCharacter, onConfirm, onBack }: Charact
                 <span className="mt-1.5 hidden font-retro text-sm leading-tight text-white/55 sm:block">{c.trait}</span>
                 {isSel && (
                   <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full border border-[#ffd97a]/70 bg-[#2a1b04] px-2 py-0.5 font-pixel text-[6px] text-[#ffd97a] shadow-[0_0_12px_rgba(247,201,72,0.6)]">
-                    SELECTED
+                    {language === 'id' ? 'DIPILIH' : 'SELECTED'}
                   </span>
                 )}
               </button>
@@ -161,10 +163,11 @@ export function CharacterSelect({ initialCharacter, onConfirm, onBack }: Charact
               : 'cursor-not-allowed border border-white/10 bg-white/5 text-white/30'
           }`}
         >
-          {selected ? `BEGIN AS ${getCharacter(selected).name.toUpperCase()}` : 'SELECT A HERO'}
+          {selected
+            ? `${language === 'id' ? 'MULAI SEBAGAI' : 'BEGIN AS'} ${getCharacter(selected).name.toUpperCase()}`
+            : (language === 'id' ? 'PILIH PAHLAWAN' : 'SELECT A HERO')}
         </button>
       </div>
     </div>
   );
 }
-

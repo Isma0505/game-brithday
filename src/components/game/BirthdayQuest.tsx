@@ -32,7 +32,11 @@ import { GreetingCard3D } from './GreetingCard3D';
 import { HubScreen } from './HubScreen';
 import { IntroScreen } from './IntroScreen';
 import { LoadingScreen } from './LoadingScreen';
+import { LanternFestivalGame } from './LanternFestivalGame';
+import { PortalChallengeGame } from './PortalChallengeGame';
+import { StarMemoryGame } from './StarMemoryGame';
 import { StarTrailGame } from './StarTrailGame';
+import { LanguageProvider, useLanguage } from '@/lib/game/i18n';
 
 type Phase =
   | 'loading'
@@ -44,6 +48,9 @@ type Phase =
   | 'gift'
   | 'cake'
   | 'card'
+  | 'lantern'
+  | 'memory'
+  | 'portal'
   | 'room'
   | 'finale';
 
@@ -60,9 +67,18 @@ const PHASE_MUSIC: Partial<Record<Phase, TrackName>> = {
   finale: 'finale',
 };
 
-type PlayableId = 'trail' | 'balloon' | 'gift' | 'cake' | 'card';
+type PlayableId = 'trail' | 'balloon' | 'gift' | 'lantern' | 'memory' | 'portal';
 
 export default function BirthdayQuest() {
+  return (
+    <LanguageProvider>
+      <BirthdayQuestContent />
+    </LanguageProvider>
+  );
+}
+
+function BirthdayQuestContent() {
+  const { language, toggleLanguage, t } = useLanguage();
   const [progress, setProgress] = useState<GameProgress>(DEFAULT_PROGRESS);
   const [phase, setPhase] = useState<Phase>('loading');
   const [hydrated, setHydrated] = useState(false);
@@ -169,6 +185,9 @@ export default function BirthdayQuest() {
       return next;
     });
   }, []);
+  const markPortalDone = useCallback(() => update({ portalDone: true }), [update]);
+  const markLanternDone = useCallback(() => update({ lanternDone: true }), [update]);
+  const markMemoryDone = useCallback(() => update({ memoryDone: true }), [update]);
 
   /* fresh save but keep going straight to hero selection */
   const startNewGame = useCallback(() => {
@@ -218,7 +237,7 @@ export default function BirthdayQuest() {
   );
   const enterPortal = useCallback(() => {
     update({ trailDone: true });
-    setPhase('room');
+    setPhase('hub');
   }, [update]);
   const makeWish = useCallback(() => update({ wished: true }), [update]);
   const markFinaleSeen = useCallback(() => update({ finaleSeen: true }), [update]);
@@ -288,12 +307,28 @@ export default function BirthdayQuest() {
           onBack={goHub}
           onDone={markCakeDone}
           onRoom={goRoom}
-          roomOpen={progress.trailDone}
+          roomOpen={progress.portalDone}
         />
       )}
 
       {phase === 'card' && (
         <GreetingCard3D onBack={goHub} onOpened={markCardOpened} />
+      )}
+
+      {phase === 'lantern' && (
+        <LanternFestivalGame onBack={goHub} onComplete={markLanternDone} />
+      )}
+
+      {phase === 'memory' && (
+        <StarMemoryGame onBack={goHub} onComplete={markMemoryDone} />
+      )}
+
+      {phase === 'portal' && (
+        <PortalChallengeGame
+          onBack={goHub}
+          onComplete={markPortalDone}
+          onEnterRoom={goRoom}
+        />
       )}
 
       {phase === 'room' && (
@@ -321,13 +356,22 @@ export default function BirthdayQuest() {
 
       {/* global mute toggle (hidden during the boot sequence) */}
       {phase !== 'loading' && (
-        <button
-          onClick={toggleMute}
-          aria-label={progress.muted ? 'Unmute music and sound' : 'Mute music and sound'}
-          className="absolute right-2.5 top-2.5 z-50 flex h-10 w-10 items-center justify-center rounded-lg border border-white/15 bg-[#14102b]/80 text-white/80 backdrop-blur-sm transition-all hover:border-[#ffd97a]/50 hover:text-[#ffd97a] active:scale-95"
-        >
-          {progress.muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
-        </button>
+        <>
+          <button
+            onClick={toggleMute}
+            aria-label={t(progress.muted ? 'Unmute music and sound' : 'Mute music and sound')}
+            className="absolute right-14 top-2.5 z-50 flex h-10 items-center justify-center rounded-lg border border-white/15 bg-[#14102b]/80 px-2 font-pixel text-[7px] text-white/80 backdrop-blur-sm transition-all hover:border-[#ffd97a]/50 hover:text-[#ffd97a] active:scale-95"
+          >
+            {progress.muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+          </button>
+          <button
+            onClick={toggleLanguage}
+            aria-label={`${t('LANGUAGE')}: ${language === 'id' ? 'English' : 'Indonesia'}`}
+            className="absolute right-2.5 top-2.5 z-50 flex h-10 items-center justify-center rounded-lg border border-[#ffd97a]/40 bg-[#14102b]/80 px-2 font-pixel text-[7px] text-[#ffd97a] backdrop-blur-sm transition-all hover:border-[#ffd97a] active:scale-95"
+          >
+            {language === 'id' ? 'EN' : 'ID'}
+          </button>
+        </>
       )}
     </div>
   );

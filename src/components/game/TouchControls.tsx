@@ -5,7 +5,7 @@
  * ========================================================================= */
 
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef, useState, type PointerEvent } from 'react';
 
 interface TouchControlsProps {
   mode?: 'joystick' | 'dpad';
@@ -51,26 +51,37 @@ export function TouchControls({ mode = 'joystick', onVector, onAction, actionLab
   if (mode === 'dpad') {
     const btn =
       'flex h-14 w-14 items-center justify-center rounded-xl border border-white/20 bg-[#181233]/80 text-[#ffd97a] shadow-[0_0_14px_rgba(120,90,220,0.35)] backdrop-blur-sm active:scale-95 active:bg-[#2a1b4e] transition-transform select-none touch-none';
+    const startDirection = (e: PointerEvent<HTMLButtonElement>, x: number) => {
+      e.preventDefault();
+      e.currentTarget.setPointerCapture?.(e.pointerId);
+      onVector?.(x, 0);
+    };
+    const stopDirection = (e: PointerEvent<HTMLButtonElement>) => {
+      if (e.currentTarget.hasPointerCapture?.(e.pointerId)) {
+        e.currentTarget.releasePointerCapture?.(e.pointerId);
+      }
+      onVector?.(0, 0);
+    };
     return (
       <div className="pointer-events-none absolute inset-x-0 bottom-4 z-30 flex items-end justify-between px-5 pb-[env(safe-area-inset-bottom)]">
         <div className="pointer-events-auto flex gap-3">
           <button
             aria-label="Move left"
             className={btn}
-            onPointerDown={(e) => { e.preventDefault(); onVector?.(-1, 0); }}
-            onPointerUp={() => onVector?.(0, 0)}
-            onPointerLeave={() => onVector?.(0, 0)}
-            onPointerCancel={() => onVector?.(0, 0)}
+            onPointerDown={(e) => startDirection(e, -1)}
+            onPointerUp={stopDirection}
+            onPointerCancel={stopDirection}
+            onLostPointerCapture={() => onVector?.(0, 0)}
           >
             <ChevronLeft className="h-6 w-6" />
           </button>
           <button
             aria-label="Move right"
             className={btn}
-            onPointerDown={(e) => { e.preventDefault(); onVector?.(1, 0); }}
-            onPointerUp={() => onVector?.(0, 0)}
-            onPointerLeave={() => onVector?.(0, 0)}
-            onPointerCancel={() => onVector?.(0, 0)}
+            onPointerDown={(e) => startDirection(e, 1)}
+            onPointerUp={stopDirection}
+            onPointerCancel={stopDirection}
+            onLostPointerCapture={() => onVector?.(0, 0)}
           >
             <ChevronRight className="h-6 w-6" />
           </button>
@@ -97,15 +108,18 @@ export function TouchControls({ mode = 'joystick', onVector, onAction, actionLab
         onPointerDown={(e) => {
           e.preventDefault();
           activeId.current = e.pointerId;
-          (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+          e.currentTarget.setPointerCapture?.(e.pointerId);
           handleMove(e.clientX, e.clientY);
         }}
         onPointerMove={(e) => {
           if (activeId.current !== e.pointerId) return;
           handleMove(e.clientX, e.clientY);
         }}
-        onPointerUp={() => reset()}
+        onPointerUp={(e) => {
+          if (activeId.current === e.pointerId) reset();
+        }}
         onPointerCancel={() => reset()}
+        onLostPointerCapture={() => reset()}
       >
         <div
           className="pointer-events-none absolute left-1/2 top-1/2 h-12 w-12 rounded-full border border-[#ffd97a]/50 bg-[#2a1b4e]/90 shadow-[0_0_14px_rgba(247,201,72,0.4)]"

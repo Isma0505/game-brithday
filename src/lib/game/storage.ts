@@ -17,6 +17,12 @@ export interface GameProgress {
   cakeDone: boolean;
   /** 3D greeting card has been opened. */
   cardOpened: boolean;
+  /** Lantern Festival mini-game has been completed. */
+  lanternDone: boolean;
+  /** Star Memory mini-game has been completed. */
+  memoryDone: boolean;
+  /** Golden Portal challenge has been completed. */
+  portalDone: boolean;
   wished: boolean;
   finaleSeen: boolean;
 }
@@ -33,6 +39,9 @@ export const DEFAULT_PROGRESS: GameProgress = {
   giftsDone: false,
   cakeDone: false,
   cardOpened: false,
+  lanternDone: false,
+  memoryDone: false,
+  portalDone: false,
   wished: false,
   finaleSeen: false,
 };

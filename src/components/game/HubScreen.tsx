@@ -10,11 +10,12 @@ import { ArrowRightLeft, Check, Lock, RotateCcw, Star } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { audio } from '@/lib/game/audio';
 import { GOALS } from '@/lib/game/config';
-import { drawBalloon, drawCake, drawGiftBox, drawMagicStar, drawPortal, getCharacter, drawSprite, drawTree } from '@/lib/game/sprites';
+import { drawBalloon, drawGiftBox, drawMagicStar, drawPortal, getCharacter, drawSprite, drawTree } from '@/lib/game/sprites';
 import type { GameProgress } from '@/lib/game/storage';
 import { SkyCanvas } from './SkyCanvas';
+import { useLanguage } from '@/lib/game/i18n';
 
-export type PlayableId = 'trail' | 'balloon' | 'gift' | 'cake' | 'card';
+export type PlayableId = 'trail' | 'balloon' | 'gift' | 'lantern' | 'memory' | 'portal';
 
 interface HubScreenProps {
   progress: GameProgress;
@@ -24,7 +25,7 @@ interface HubScreenProps {
   onReset: () => void;
 }
 
-type CardId = 'trail' | 'balloon' | 'gift' | 'cake' | 'card' | 'room';
+type CardId = 'trail' | 'balloon' | 'gift' | 'lantern' | 'memory' | 'room';
 
 /* Animated preview canvas per card. */
 function PortalPreview({ id }: { id: CardId }) {
@@ -105,54 +106,31 @@ function PortalPreview({ id }: { id: CardId }) {
             ctx.fillRect(px, py, 2, 2);
           }
           break;
-        case 'cake': {
-          /* a tiny cake with three burning candles */
-          ctx.fillStyle = 'rgba(255,196,110,0.14)';
-          const halo = ctx.createRadialGradient(cx, groundY - 26, 0, cx, groundY - 26, 40);
-          halo.addColorStop(0, 'rgba(255,196,110,0.4)');
-          halo.addColorStop(1, 'rgba(255,196,110,0)');
-          ctx.fillStyle = halo;
-          ctx.fillRect(0, 0, W, H);
-          drawCake(ctx, cx, groundY + 1, 0.62, time, [true, true, true]);
-          break;
-        }
-        case 'card': {
-          /* a floating sealed letter */
-          const ly = groundY - 24 + Math.sin(time * 1.6) * 3;
-          ctx.save();
-          ctx.translate(cx, ly);
-          ctx.rotate(Math.sin(time * 1.1) * 0.06);
-          ctx.fillStyle = '#fdf6e8';
-          ctx.strokeStyle = '#c9a24a';
-          ctx.lineWidth = 1.4;
-          ctx.beginPath();
-          ctx.rect(-20, -13, 40, 26);
-          ctx.fill();
-          ctx.stroke();
-          /* flap */
-          ctx.beginPath();
-          ctx.moveTo(-20, -13);
-          ctx.lineTo(0, 4);
-          ctx.lineTo(20, -13);
-          ctx.stroke();
-          /* seal */
-          ctx.fillStyle = '#e8a528';
-          ctx.beginPath();
-          ctx.arc(0, 2, 4.4, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = '#7a4a10';
-          ctx.fillRect(-1.6, -0.4, 3.2, 3);
-          ctx.fillRect(-3, -1.4, 2, 2);
-          ctx.fillRect(1, -1.4, 2, 2);
-          ctx.restore();
-          /* sparkles around */
-          for (let i = 0; i < 4; i++) {
-            const a = time * 2 + i * 1.6;
-            ctx.fillStyle = `rgba(255,222,140,${0.35 + 0.45 * Math.abs(Math.sin(time * 3 + i * 2))})`;
-            ctx.fillRect(cx + Math.cos(a) * 26, ly + Math.sin(a * 1.3) * 16, 1.6, 1.6);
+        case 'lantern':
+          for (let i = 0; i < 5; i++) {
+            const lx = cx + (i - 2) * 18;
+            const ly = groundY - 28 - (i % 2) * 7;
+            ctx.fillStyle = ['#f2a2c0', '#f7c948', '#a78bfa', '#7ee0c3', '#f7c948'][i];
+            ctx.beginPath();
+            ctx.ellipse(lx, ly, 7, 10, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#fff1c4';
+            ctx.fillRect(lx - 1, ly - 3, 2, 6);
           }
           break;
-        }
+        case 'memory':
+          for (let i = 0; i < 4; i++) {
+            const x = cx - 27 + (i % 2) * 36;
+            const y = groundY - 45 + Math.floor(i / 2) * 27;
+            ctx.fillStyle = '#3a2b12';
+            ctx.fillRect(x, y, 25, 20);
+            ctx.strokeStyle = '#ffd97a';
+            ctx.strokeRect(x, y, 25, 20);
+            ctx.fillStyle = '#ffd97a';
+            ctx.font = '16px serif';
+            ctx.fillText(['★', '☾', '✦', '♥'][i], x + 5, y + 16);
+          }
+          break;
       }
       raf = requestAnimationFrame(loop);
     };
@@ -207,7 +185,15 @@ function HeroBadge({ characterId }: { characterId: string }) {
 }
 
 export function HubScreen({ progress, onPlay, onRoom, onChangeCharacter, onReset }: HubScreenProps) {
+  const { t, language } = useLanguage();
+  const fiveGamesDone =
+    progress.trailDone &&
+    progress.balloonDone &&
+    progress.giftsDone &&
+    progress.lanternDone &&
+    progress.memoryDone;
   const [confirmReset, setConfirmReset] = useState(false);
+  const [showProgressNotice, setShowProgressNotice] = useState(true);
 
   useEffect(() => {
     if (!confirmReset) return;
@@ -215,8 +201,13 @@ export function HubScreen({ progress, onPlay, onRoom, onChangeCharacter, onReset
     return () => clearTimeout(t);
   }, [confirmReset]);
 
-  const doneCount = (progress.trailDone ? 1 : 0) + (progress.balloonDone ? 1 : 0) + (progress.giftsDone ? 1 : 0);
-  const roomOpen = progress.trailDone;
+  const doneCount =
+    (progress.trailDone ? 1 : 0) +
+    (progress.balloonDone ? 1 : 0) +
+    (progress.giftsDone ? 1 : 0) +
+    (progress.lanternDone ? 1 : 0) +
+    (progress.memoryDone ? 1 : 0);
+  const roomOpen = progress.portalDone;
 
   const cards: {
     id: CardId;
@@ -230,8 +221,8 @@ export function HubScreen({ progress, onPlay, onRoom, onChangeCharacter, onReset
   }[] = [
     {
       id: 'trail',
-      name: 'STARLIGHT TRAIL',
-      desc: 'Run, leap and gather the 5 magical stars hidden in the enchanted forest.',
+      name: t('STARLIGHT TRAIL'),
+      desc: language === 'id' ? `Lari, lompat, dan kumpulkan ${GOALS.STARS} bintang ajaib di hutan bercahaya.` : 'Run, leap and gather the 5 magical stars hidden in the enchanted forest.',
       status: progress.trailDone
         ? 'All 5 stars found!'
         : `Stars ${progress.trailStars.length}/${GOALS.STARS} found`,
@@ -242,8 +233,8 @@ export function HubScreen({ progress, onPlay, onRoom, onChangeCharacter, onReset
     },
     {
       id: 'balloon',
-      name: 'BALLOON FIESTA',
-      desc: 'Pop floating balloons across the night sky. Golden ones count triple!',
+      name: t('BALLOON FIESTA'),
+      desc: language === 'id' ? 'Pecahkan balon yang melayang di langit malam. Balon emas bernilai tiga!' : 'Pop floating balloons across the night sky. Golden ones count triple!',
       status: progress.balloonDone
         ? `Best: ${progress.balloonPops} pops in ${progress.balloonTimeSec?.toFixed(1) ?? '—'}s`
         : `Pop ${GOALS.BALLOON_POPS} balloons`,
@@ -254,8 +245,8 @@ export function HubScreen({ progress, onPlay, onRoom, onChangeCharacter, onReset
     },
     {
       id: 'gift',
-      name: 'GIFT CASCADE',
-      desc: 'Catch the falling presents with your basket. Golden gifts are worth two.',
+      name: t('GIFT CASCADE'),
+      desc: language === 'id' ? 'Tangkap hadiah yang jatuh dengan keranjangmu. Hadiah emas bernilai dua.' : 'Catch the falling presents with your basket. Golden gifts are worth two.',
       status: progress.giftsDone
         ? `Best: ${progress.giftsCaught} gifts caught`
         : `Catch ${GOALS.GIFTS_CATCH} gifts`,
@@ -265,37 +256,39 @@ export function HubScreen({ progress, onPlay, onRoom, onChangeCharacter, onReset
       accent: '#5eead4',
     },
     {
-      id: 'cake',
-      name: 'THE WISHING CAKE',
-      desc: `A grand birthday cake with ${GOALS.CAKE_CANDLES} candles — one for every star. Blow them all out and make your wish.`,
-      status: progress.cakeDone ? 'Wish granted!' : `Blow out ${GOALS.CAKE_CANDLES} candles`,
-      done: progress.cakeDone,
+      id: 'lantern',
+      name: language === 'id' ? 'PERBURUAN KRISTAL' : 'CRYSTAL HUNT',
+      desc: language === 'id' ? 'Cari kristal dengan warna yang tepat sebelum waktu habis.' : 'Find the matching crystals before the night runs out.',
+      status: progress.lanternDone ? (language === 'id' ? 'Semua kristal terkumpul!' : 'All crystals collected!') : (language === 'id' ? 'Kumpulkan 18 kristal' : 'Collect 18 crystals'),
+      done: progress.lanternDone,
       locked: false,
-      onClick: () => onPlay('cake'),
-      accent: '#ffb066',
+      onClick: () => onPlay('lantern'),
+      accent: '#f7c948',
     },
     {
-      id: 'card',
-      name: 'A LETTER FOR YOU',
-      desc: 'A sealed letter glows with your name on it. Break the wax seal and read what is written inside.',
-      status: progress.cardOpened ? 'Read it again anytime' : 'Sealed with love',
-      done: progress.cardOpened,
+      id: 'memory',
+      name: language === 'id' ? 'MEMORI BINTANG' : 'STAR MEMORY',
+      desc: language === 'id' ? 'Temukan semua pasangan simbol bintang yang tersembunyi.' : 'Find every matching pair of hidden star symbols.',
+      status: progress.memoryDone ? (language === 'id' ? 'Semua pasangan ditemukan!' : 'All pairs found!') : (language === 'id' ? 'Temukan 4 pasangan' : 'Find 4 pairs'),
+      done: progress.memoryDone,
       locked: false,
-      onClick: () => onPlay('card'),
-      accent: '#fdf6e8',
+      onClick: () => onPlay('memory'),
+      accent: '#a78bfa',
     },
     {
       id: 'room',
-      name: 'THE GOLDEN PORTAL',
+      name: t('THE GOLDEN PORTAL'),
       desc: roomOpen
         ? 'The way is open. Your surprise awaits inside...'
-        : `Sealed by starlight. Gather the ${GOALS.STARS} magical stars in Starlight Trail to awaken it.`,
-      status: roomOpen ? 'ENTER THE BIRTHDAY ROOM' : `STARS ${progress.trailStars.length}/${GOALS.STARS} — TAP TO QUEST`,
+        : 'A living portal sigil challenges you to gather its golden sparks.',
+      status: roomOpen
+        ? 'ENTER THE BIRTHDAY ROOM'
+        : fiveGamesDone
+          ? 'TAP TO PLAY THE SIGIL CHALLENGE'
+          : `WONDERS ${doneCount}/5 — COMPLETE ALL FIVE FIRST`,
       done: roomOpen,
-      locked: !roomOpen,
-      /* FIX: tapping the sealed portal now jumps straight into the quest
-         that unlocks it, instead of silently doing nothing. */
-      onClick: () => { if (roomOpen) onRoom(); else onPlay('trail'); },
+      locked: !fiveGamesDone,
+      onClick: () => { if (roomOpen) onRoom(); else if (fiveGamesDone) onPlay('portal'); },
       accent: '#ffd97a',
     },
   ];
@@ -312,7 +305,7 @@ export function HubScreen({ progress, onPlay, onRoom, onChangeCharacter, onReset
             THE ASTRAL FAIR
           </h1>
           <p className="mt-2 font-elegant text-sm italic text-white/70 sm:text-base">
-            Five wonders await — and one secret hides behind golden light.
+            {language === 'id' ? 'Lima permainan menanti — dan satu permainan rahasia tersembunyi di balik cahaya emas.' : 'Five wonders await — and a secret game hides behind golden light.'}
           </p>
         </header>
 
@@ -326,13 +319,13 @@ export function HubScreen({ progress, onPlay, onRoom, onChangeCharacter, onReset
             ) : null}
             <div>
               <p className="font-pixel text-[8px] text-white/80 sm:text-[9px]">
-                {progress.character ? getCharacter(progress.character).name.toUpperCase() : 'NO HERO'}
+                {progress.character ? getCharacter(progress.character).name.toUpperCase() : (language === 'id' ? 'BELUM ADA PAHLAWAN' : 'NO HERO')}
               </p>
               <button
                 onClick={() => { audio.sfx('click'); onChangeCharacter(); }}
                 className="mt-1 flex items-center gap-1.5 font-retro text-sm text-[#ffd97a]/80 transition-colors hover:text-[#ffd97a]"
               >
-                <ArrowRightLeft className="h-3.5 w-3.5" /> Change hero
+                <ArrowRightLeft className="h-3.5 w-3.5" /> {language === 'id' ? 'Ganti pahlawan' : 'Change hero'}
               </button>
             </div>
           </div>
@@ -349,7 +342,7 @@ export function HubScreen({ progress, onPlay, onRoom, onChangeCharacter, onReset
                   }`}
                 />
               ))}
-              <span className="ml-1 font-retro text-base text-white/60">{doneCount}/3</span>
+              <span className="ml-1 font-retro text-base text-white/60">{doneCount}/5</span>
             </div>
           </div>
         </div>
@@ -357,7 +350,7 @@ export function HubScreen({ progress, onPlay, onRoom, onChangeCharacter, onReset
         {/* cards */}
         <div className="grid w-full max-w-3xl grid-cols-1 gap-4 sm:grid-cols-2">
           {cards.map((card) => (
-            <button
+            <div
               key={card.id}
               onClick={() => {
                 if (card.locked) { audio.sfx('click'); card.onClick(); return; }
@@ -372,6 +365,14 @@ export function HubScreen({ progress, onPlay, onRoom, onChangeCharacter, onReset
                     ? 'animate-[glowPulse_2.4s_ease-in-out_infinite] border-[#ffd97a]/70 bg-[#1c1440]/85 hover:-translate-y-1 hover:shadow-[0_10px_40px_rgba(247,201,72,0.35)]'
                     : 'border-white/12 bg-[#14102b]/75 hover:-translate-y-1 hover:border-white/30 hover:shadow-[0_10px_36px_rgba(120,90,220,0.3)]'
               }`}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  card.onClick();
+                }
+              }}
             >
               <div className="relative h-24 w-full overflow-hidden border-b border-white/8 sm:h-28">
                 <PortalPreview id={card.id} />
@@ -379,11 +380,14 @@ export function HubScreen({ progress, onPlay, onRoom, onChangeCharacter, onReset
                   <div className="absolute inset-0 flex items-center justify-center bg-[#070514]/78 backdrop-blur-[1.5px]">
                     <div className="flex flex-col items-center gap-1.5">
                       <Lock className="h-6 w-6 text-white/70" />
-                      <span className="font-pixel text-[7px] tracking-widest text-white/60">STARS {progress.trailStars.length}/{GOALS.STARS}</span>
+                      <span className="font-pixel text-[7px] tracking-widest text-white/60">
+                        {fiveGamesDone ? 'READY TO PLAY' : `WONDERS ${doneCount}/5`}
+                      </span>
                       <span className="flex items-center gap-1 font-pixel text-[6px] tracking-widest text-[#ffd97a]/90">
-                        <Star className="h-2.5 w-2.5" /> COMPLETE THE TRAIL
+                        <Star className="h-2.5 w-2.5" /> {fiveGamesDone ? 'PLAY THE SIGIL CHALLENGE' : 'COMPLETE ALL 5 WONDERS'}
                       </span>
                     </div>
+
                   </div>
                 )}
                 {card.done && card.id !== 'room' && (
@@ -415,9 +419,50 @@ export function HubScreen({ progress, onPlay, onRoom, onChangeCharacter, onReset
                   {card.status}
                 </p>
               </div>
-            </button>
+            </div>
           ))}
         </div>
+
+        {showProgressNotice && !progress.portalDone && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#070a18]/75 px-4 backdrop-blur-sm">
+            <div className="w-full max-w-md animate-[riseIn_0.5s_ease-out_both] rounded-3xl border border-[#ffd97a]/70 bg-[#14102b]/95 p-6 text-center shadow-[0_0_60px_rgba(247,201,72,0.35)]">
+              <div className="mx-auto mb-4 h-2 w-16 rounded-full bg-[#ffd97a] shadow-[0_0_16px_rgba(247,201,72,0.8)]" />
+              <h2 className="font-pixel text-sm text-[#ffd97a]">
+                {fiveGamesDone
+                  ? (language === 'id' ? 'SELAMAT!' : 'CONGRATULATIONS!')
+                  : (language === 'id' ? 'MISI RAHASIA' : 'SECRET MISSION')}
+              </h2>
+              <p className="mt-4 font-retro text-xl leading-tight text-white/90">
+                {fiveGamesDone
+                  ? (language === 'id' ? 'Kamu telah menyelesaikan 5 game!' : 'You have completed all 5 games!')
+                  : (language === 'id' ? 'Silakan selesaikan 5 game terlebih dahulu.' : 'Please complete all 5 games first.')}
+              </p>
+              <p className="mt-2 font-elegant text-lg italic text-[#9fe8d8]">
+                {fiveGamesDone
+                  ? (language === 'id' ? 'Portal Emas telah terbuka.' : 'The Golden Portal is now open.')
+                  : (language === 'id' ? 'Lalu buka Portal Emas untuk melihat kejutan!' : 'Then open the Golden Portal to discover the surprise!')}
+              </p>
+              {fiveGamesDone && (
+                <button
+                  type="button"
+                  onClick={() => { audio.sfx('fanfare'); setShowProgressNotice(false); onPlay('portal'); }}
+                  className="mt-6 rounded-xl bg-gradient-to-b from-[#ffd97a] to-[#e8a528] px-6 py-3 font-pixel text-[9px] text-[#2a1b04] shadow-[0_4px_22px_rgba(247,201,72,0.5)] active:scale-95"
+                >
+                  {language === 'id' ? 'BUKA PORTAL EMAS' : 'OPEN THE GOLDEN PORTAL'}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setShowProgressNotice(false)}
+                className={`${fiveGamesDone ? 'mt-3' : 'mt-6'} block w-full font-pixel text-[8px] text-white/55 hover:text-white/85`}
+              >
+                {fiveGamesDone
+                  ? (language === 'id' ? 'NANTI SAJA' : 'LATER')
+                  : (language === 'id' ? 'AYO MULAI' : "LET'S START")}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* reset progress (two-step confirm so it can never fire by accident) */}
         <button
